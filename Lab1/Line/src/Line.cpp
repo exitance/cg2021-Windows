@@ -156,8 +156,8 @@ void DDA(int x0, int y0, int x1, int y1, Color c)
     int my = 1; if (y1 < y0) my = -1;
     int mx = 1; if (x1 < x0) mx = -1;
     if ( abs(dy) > abs(dx) )
-    {
-        float f = dx / dy;
+    {   // more close to y-axis, |k| > 1
+        float f = dx / dy;  // 1/k
         float x = x0;
         for (int y = y0; y != y1 + my; y += my)
         {
@@ -166,7 +166,7 @@ void DDA(int x0, int y0, int x1, int y1, Color c)
         }
     }
     else
-    {
+    {   // more close to x-axis, |k| <= 1
         float k = dy / dx; 
         float y = y0;
         for (int x = x0; x != x1 + mx; x += mx)
@@ -184,40 +184,70 @@ void Bresenham(int x0, int y0, int x1, int y1, Color c)
     if (x1==x0 && y1==y0) return;
     int dx = x1 - x0, dy = y1 - y0;
     if ( abs(dy) > abs(dx) )
-    {
+    {   // more close to y-axis, |k| > 1
         if (y1 < y0)
-        {
+        {   // up
             std::swap(y1, y0);
             std::swap(x1, x0);
+            // update
+            dy = y1 - y0;
+            dx = x1 - x0;
         }
-        int mx = 1; if (x1 < x0) mx = -1;
-        for (int y = y0, x = x0, e = -mx*dy; y <= y1; y ++)
+        // d: the Horizontal SIGNED distance to the current pixel center, d[0] = 0
+        // current pixel(x, y)
+        // y += 1 => d += f, where f = dx / dy
+        // when |d| >= 0.5 ( mx * d >= 0.5 ), line is more close to pixel(x + mx, y + 1)
+        //      => x += mx, d -= mx ( x of current pixel changed, so d should change )
+        // when |d} <  0.5 ( mx * d <  0.5 ), line is more close to pixel(x     , y + 1)
+
+        // IMPROVE: Use ONLY INTEGER
+        // e' := mx * d - 0.5, e' just need compare to 0, e'[0] = -0.5
+        // e  := e' * 2 * dy, so that e always be an integer, e[0] = -dy
+        // y += 1 => e += 2 * mx * dx
+        // when e >= 0 => x += mx, e -= 2 * dy
+        int mx = dx > 0 ? 1: -1;
+        for (int y = y0, x = x0, e = -dy; y <= y1; y ++)
         {
             draw_Point(x, y, c);
-            e += 2*dx;
-            if ( (dx>0 && e>=0) || (dx<0 && e<=0) )
+            e += 2 * mx * dx;
+            if ( e >= 0 )
             {
                 x += mx;
-                e -= 2*mx*dy;
+                e -= 2 * dy;
             }
         }
     }
     else
-    {
+    {   // more close to x-axis, |k| <= 1
         if (x1 < x0)
-        {
+        {   // right
             std::swap(y1, y0);
             std::swap(x1, x0);
+            // update
+            dy = y1 - y0;
+            dx = x1 - x0;
         }
-        int my = 1; if (y1 < y0) my = -1;
-        for (int x = x0, y = y0, e= -my*dx; x <= x1; x ++)
+        // d: the Vertical SIGNED distance to the current pixel center, d[0] = 0
+        // current pixel(x, y)
+        // x += 1 => d += k, where k = dy / dy
+        // when |d| >= 0.5 ( my * d >= 0.5 ), line is more close to pixel(x + 1, y + my)
+        //      => y += my, d -= my ( y of current pixel changed, so d should change )
+        // when |d} <  0.5 ( my * d <  0.5 ), line is more close to pixel(x    , y + 1 )
+
+        // IMPROVE: Use ONLY INTEGER
+        // e' := my * d - 0.5, e' just need compare to 0, e'[0] = -0.5
+        // e  := e' * 2 * dx, so that e always be an integer, e[0] = -dx
+        // x += 1 => e += 2 * my * dy
+        // when e >= 0 => y += my, e -= 2 * dx
+        int my = dy > 0 ? 1: -1;
+        for (int x = x0, y = y0, e= -dx; x <= x1; x ++)
         {
             draw_Point(x, y, c);
-            e += 2*dy;
-            if ( (dy>0 && e>=0) || (dy<0 && e<=0) )
+            e += 2 * my * dy;
+            if ( e >= 0 )
             {
                 y += my;
-                e -= 2*my*dx;
+                e -= 2 * dx;
             }
         }
     }
