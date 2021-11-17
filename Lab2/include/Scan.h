@@ -49,12 +49,14 @@ struct Point
 
     ll cross_product(const Point &b) const
     {
+        // use long long to prevent overflow error
         ll x0 = x, y0 = y;
         ll x1 = b.x, y1 = b.y;
         return x0 * y1 - y0 * x1;
     }
     bool valid() const
     {
+        // if it is inside the screen
         if (x >= 0 && y >= 0 && x <= sw && y <= sh) return true;
         return false;
     }
@@ -97,13 +99,14 @@ struct Line
 struct ActEdge
 {
     int ymax, ymin;
-    float deltaX, interX;
+    // deltaX is a constant, while interX is a variable
+    double deltaX, interX;
 
     // default constructor
     ActEdge() { }
     // construct a active edge from a line
     ActEdge(Line line);
-    // construct a active edge from given interX and y
+    // construct a point-like active edge from given interX and y ( horizental line : a * x + b * y = c && a = 0 Convention deltaX = 0)
     ActEdge(int x, int y)
     {   
         interX = x; deltaX = 0;

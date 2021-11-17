@@ -186,19 +186,30 @@ ActEdge::ActEdge(Line line)
     int x0 = line.vertex[0].x, y0 = line.vertex[0].y;
     int x1 = line.vertex[1].x, y1 = line.vertex[1].y;
     if (y0 == y1)
-    {
+    {   // a horizental line: a = 0, 
+        // Convention deltaX = 0, countless intersections with line y = y0 and 0 intersection with other lines
         ymax = ymin = y0;
         interX = -1; deltaX = 0;
     }
     else
-    {
+    {   // interX[0] = x coordinate of endpoint with smaller y
+        // a != 0
+        // a * x  + b * y  + c = 0
+        // a * x0 + b * y0 + c = 0  (1)
+        // a * x1 + b * y1 + c = 0  (2)
+        // (2) - (1) implies:
+        // a * (x1 - x0) + b * (y1 - y0) = 0    (3)
+        // -b/a = (x1 - x0) / (y1 - y0)
+        // x = 1/a * (-b * y - c)
+        // y += 1 => x' = 1/a * (-b * (y + 1) - c) = x - b/a
+        // interX[i] = interX[i-1] + deltaX
         ymax = std::max(y0, y1);
         ymin = std::min(y0, y1);
         if (ymin == y0) interX = x0;
         else interX = x1;
         int a = y1 - y0;
         int minusb = x1 - x0;
-        deltaX = (float)minusb/a;
+        deltaX = (double)minusb/a;
     }
 }
 
@@ -207,13 +218,13 @@ ActEdge::ActEdge(Line line)
 SimplePolygon::SimplePolygon(std::vector<Line> lines)
 {
     if (!check_self_intersect(lines))
-    {
+    {   // no self-intersection
         ymin = sh; ymax = -1;
         for (int i = 0; i < lines.size(); i ++)
         {
             ActEdge ae(lines[i]);
             if (ae.interX < 0)
-            {
+            {   // horizental line, add 2 point-like line to the edges
                 int xL = std::min(lines[i].vertex[0].x, lines[i].vertex[1].x);
                 int xR = std::max(lines[i].vertex[0].x, lines[i].vertex[1].x);
                 ActEdge ael(xL, lines[i].vertex[0].y);
@@ -242,17 +253,21 @@ SimplePolygon::SimplePolygon(std::vector<Line> lines)
 // -------------------------
 void SimplePolygon::scan_convert(Color c)
 {
-    std::vector<ActEdge> NET[ymax-ymin+1];
+    // NET: new edge table for each scan line
+    // mapping: y -> y - ymin
+    std::vector<ActEdge> *NET = new std::vector<ActEdge>[ymax-ymin+1];
 
+    // edges[i].ymin = y => put it in NET[y-ymin]
     for (int i = 0; i < edges.size(); i ++)
         NET[edges[i].ymin - ymin].push_back(edges[i]);
 
+    // AET: active edge table, by ascending order of x coordinates of the intersections dynamically
     std::list<ActEdge> AET;
 
-    for (int i = 0; i <= ymax-ymin; i ++)
-    {
+    for (int i = 0; i < ymax-ymin+1; i ++)
+    {   // scan each row from bottom to top
         for (int j = 0; j < NET[i].size(); j ++)
-        {
+        {   // insert the current row's new intersections to the AET
             int netX = int(NET[i][j].interX + 0.5);
             auto it = AET.begin();
             for (; it != AET.end(); it ++)
@@ -260,20 +275,19 @@ void SimplePolygon::scan_convert(Color c)
                 int itX = int(it->interX + 0.5);
                 if (itX >= netX) break;
             }
+            // intersection is the endpoint of edge, and
+            // *it is not a horizontal edge, and
+            // the 2 intersecting edge are in the opposite side of the scan line
+            // regard it as a single intersection
             if (it != AET.end())
             {
                 int x0 = int(it->interX+0.5), x1 = int(NET[i][j].interX+0.5);
-                if (x0 == x1)
-                {
-                    if (it->ymax == i+ymin && it->ymax != it->ymin)
-                        it = AET.erase(it);
-                    else if (NET[i][j].deltaX > it->deltaX)
-                        it ++;
-                }
+                if (x0 == x1 && it->ymax != it->ymin && it->ymax == i + ymin)
+                    it = AET.erase(it);
             }
-            AET.insert(it, NET[i][j]);
+            it = AET.insert(it, NET[i][j]);
         }
-
+        // Pair adjacent intersections, draw a line
         auto itL = AET.begin();
         auto itR = AET.begin(); itR ++;
         for (; itL != AET.end() && itR != AET.end(); itR ++, itL ++)
@@ -283,16 +297,21 @@ void SimplePolygon::scan_convert(Color c)
             draw_line(interL.x, interL.y, interR.x, interR.y, c);
             itL = itR; itR ++;
         }
-
+        // remove edges that no longer intersect with next scan line
+        // update new interX
         for (auto it = AET.begin(); it != AET.end();)
         {
             if (it->ymax == i+ymin) it = AET.erase(it);
-            else {
+            else 
+            {
                 it->interX += it->deltaX;
                 it ++;
             }
         }
     }
+
+    delete[] NET;
+    NET = nullptr;
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -375,9 +394,7 @@ void key_callback(GLFWwindow *window, GLint key, GLint scancode, GLint action, G
                 rmod = 1;   // draw
             }
             else
-            {
                 std::cout << "ERROR::SIMPLE_POLYGON::INPUT: The number of vertices of polygon should at least 3" << std::endl;
-            }
         }
     }  
 }
