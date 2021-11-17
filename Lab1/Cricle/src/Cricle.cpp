@@ -143,7 +143,7 @@ void draw_grid(Color c)
     } 
 }
 
-// draw circle point symmetry
+// draw (x, y) and its 7 symmetry points with translation circle center form (0, 0) to (x0, y0)
 // --------------------------
 void circle_symmetry_draw(int x0, int y0, int x, int y, Color c)
 {
@@ -153,21 +153,43 @@ void circle_symmetry_draw(int x0, int y0, int x, int y, Color c)
     draw_Point(-x+x0, -y+y0, c); draw_Point(-y+x0, -x+y0, c);
 }
 
-// draw the Circle by mid-point algorithm
+// draw the Circle with center (xc, yc) and radius r by mid-point algorithm
 // --------------------------------------
 void circle_midPoint(int xc, int yc, int r, Color c)
 {
-    int x, y, d;
+    // F(x, y) = x^2 + y^2 - r^2
+    // for point(x, y): 
+    //      if F(x, y) = 0, point is on the cricle
+    //      if F(x, y) < 0, point is inside the cricle
+    //      if F(x, y) > 0, point is outside the cricle
+
+    // compute the part [x >= 0 && y >= 0 && x <= y], and 
+    // draw the symmetry points for the whole cricle with translation circle center form (0, 0) to (x0, y0)
+    // (x[0], y[0]) = (0, r)
+    // current pixel(x, y), x += 1 =>
+    // d := F(x + 1, y - 0.5), 
+    //      which is the relation between the cricle and mid point of 2 alternative pixels (x + 1, y) and (x + 1, y - 1)
+    // if d <  0, the midpoint is inside the cricle,  choose (x + 1, y    )
+    //          => d' = F(x + 1 + 1, y - 0.5)     = d + 2 * x + 3
+    // if d >= 0, the midpoint is outside the cricle, choose (x + 1, y - 1)
+    //          => d' = F(x + 1 + 1, y - 1 - 0.5) = d + 2 * (x - y) + 3, y -= 1
+    // d[0] = F(0 + 1, r - 0.5) = 1.25 - r = 5 / 4 - r
+
+    // IMPROVE: Use ONLY INTEGER
+    // e := 4 * d, e[0] = 5 - 4 * r
+    // e <  0 => e' = e + 8 * x + 12
+    // e >= 0 => e' = e + 8 * x - 8 * y + 20
+    int x, y, e;
     x = 0, y = r;
-    d = 4 - 4 * r;
+    e = 5 - 4 * r;
     circle_symmetry_draw(xc, yc, x, y, c);
     while (x <= y)
     {
-        if (d < 0)
-            d += 4*(2 * x + 3);
+        if (e < 0)
+            e += 8 * x + 12;
         else
         {
-            d += 4*(2 * (x - y) + 5);
+            e += 8 * x - 8 * y + 20;
             y --;
         }
         x ++;

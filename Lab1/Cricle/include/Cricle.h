@@ -72,9 +72,9 @@ void draw(int x, int y, Color c, int sz);
 void draw_Point(int x, int y, Color c);
 // draw gird
 void draw_grid(Color c);
-// draw circle point symmetry
+// draw (x, y) and its 7 symmetry points with translation circle center form (0, 0) to (x0, y0)
 void circle_symmetry_draw(int x0, int y0, int x, int y, Color c);
-// draw the Circle by mid-point algorithm
+// draw the Circle with center (xc, yc) and radius r by mid-point algorithm
 void circle_midPoint(int xc, int yc, int r, Color c);
 // glfw callback functions
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
