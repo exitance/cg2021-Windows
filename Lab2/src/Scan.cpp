@@ -281,7 +281,7 @@ void SimplePolygon::scan_convert(Color c)
             // regard it as a single intersection
             if (it != AET.end())
             {
-                int x0 = int(it->interX+0.5), x1 = int(NET[i][j].interX+0.5);
+                int x0 = int(it->interX + 0.5), x1 = int(NET[i][j].interX + 0.5);
                 if (x0 == x1 && it->ymax != it->ymin && it->ymax == i + ymin)
                     it = AET.erase(it);
             }
@@ -292,8 +292,8 @@ void SimplePolygon::scan_convert(Color c)
         auto itR = AET.begin(); itR ++;
         for (; itL != AET.end() && itR != AET.end(); itR ++, itL ++)
         {
-            Point interL((int)(itL->interX+0.5), i+ymin);
-            Point interR((int)(itR->interX+0.5), i+ymin);
+            Point interL((int)(itL->interX + 0.5), i+ymin);
+            Point interR((int)(itR->interX + 0.5), i+ymin);
             draw_line(interL.x, interL.y, interR.x, interR.y, c);
             itL = itR; itR ++;
         }

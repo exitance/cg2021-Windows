@@ -127,21 +127,30 @@ void draw_corp_coundary(Color c)
 
 // update parameter for each Crop boundaries
 // -----------------------------------------
-bool Line::clip_T(float p, float q, float &u_in, float &u_out)
-{
-    if (p<0)
-    {
-        float r = q/p;
+bool Line::clip_T(double p, double q, double &u_in, double &u_out)
+{   // if line is inside the boundary, update u_in and u_out
+    if (p < 0)
+    {   // the direction of the line is from outside to inside for this boundary, so it can update u_in
+        // r is the parameter for line 's intersection with the boundary
+        double r = q/p;
+        // overflow
         if (r > u_out) return false;
+        // cut more, it is possible that r < 0, which means the sgement is inside the boundary
         if (r > u_in) u_in = r;
     }
-    else if (p>0)
-    {
-        float r = q/p;
+    else if (p > 0)
+    {   // the direction of the line is from inside to outside for this boundary, so it can update u_out
+        // r is the parameter for line 's intersection with the boundary
+        double r = q/p;
+        // overflow
         if (r < u_in) return false;
+        // cut more, it is possible that r > 1, which means the sgement is inside the boundary
         if (r < u_out) u_out = r;
     }
-    else return q>=0;
+    // if p == 0, the line is parallel to boundary
+    // if q < 0, only u < 0 satisfying u * p <= q, however, we only accept u in [0, 1] as a parameter
+    // so clearly the line is outside the crop box 
+    else return q >= 0;
     return true;
 }
 
@@ -149,11 +158,18 @@ bool Line::clip_T(float p, float q, float &u_in, float &u_out)
 // --------------------------------
 Line Line::Liang_Barskey()
 {
-    Line out(Point(-1, -1),Point(-1, -1));
-
-    float dx = vertex[1].x - vertex[0].x;
-    float dy = vertex[1].y - vertex[0].y;
-    float t_in = 0, t_out = 1;
+    // parameterization algorithm
+    // XL <= x0 + u * deltax <= XR, deltax = x1 - x0
+    // YB <= y0 + u * deltay <= YT, deltay = y1 - y0
+    // direction of "light": (x0, y0) -> (x1, y1)
+    // u * pk <= qk
+    // p0 = -deltax, q0 = x0 - XL
+    // p1 = deltax,  q1 = XR - x0
+    // p2 = -deltay, q2 = y0 - YB
+    // p3 = deltay,  q3 = YT - y0
+    double dx = vertex[1].x - vertex[0].x;
+    double dy = vertex[1].y - vertex[0].y;
+    double t_in = 0, t_out = 1;
     if (clip_T(-dx, vertex[0].x-xl, t_in, t_out))
         if (clip_T(dx, xr-vertex[0].x, t_in, t_out))    
             if (clip_T(-dy, vertex[0].y-yb, t_in, t_out))
@@ -164,7 +180,8 @@ Line Line::Liang_Barskey()
                     return Line(v_in, v_out);
                 }
 
-    return out;
+    // outside the crop box
+    return Line(Point(-1, -1), Point(-1, -1));;
 }
 
 // init the clip boundary
@@ -255,23 +272,63 @@ void PolygonClip::clipping(Color c)
 void PolygonClip::LB_clipping(Color c)
 {
     std::vector<Point> tmp;
+    // in = 0, out = 1
+    int llast = -1, last = -1;
     for (int i = 0; i < vertices.size(); i ++)
-    {
+    {   // first clip each line of the polygon using Liang-Barskey algorithm
         int j = i==vertices.size()-1?0:i+1;
         Line orig_line(vertices[i], vertices[j]);
         Line clip_line = orig_line.Liang_Barskey();
+        // KEY: update vertices for clipped polygon
         if (clip_line.vertex[0].valid() && clip_line.vertex[1].valid())
-        {
-            bool fst = false;
+        {   // if the line intersect with or inside the crop box
+            // do not add same vertice repeately
             if ( tmp.empty() || tmp[tmp.size()-1] != clip_line.vertex[0] )
             {
                 tmp.push_back(clip_line.vertex[0]);
-                fst = true;
+                llast = last;
+                last = 0;
             }
-            if ( tmp.empty() || tmp[tmp.size()-1] != clip_line.vertex[1] ) 
-                if (!fst || (fst && clip_line.vertex[1] != clip_line.vertex[0]) )
-                    tmp.push_back(clip_line.vertex[1]);
-                
+            if ( tmp.empty() || tmp[tmp.size()-1] != clip_line.vertex[1] )
+            { 
+                tmp.push_back(clip_line.vertex[1]);
+                llast = last;
+                last = 1;
+            }
+            // check for corner
+            if (llast == 1 && last == 0)
+            {
+                int n = tmp.size();
+                Point llp = tmp[n-2], lp = tmp[n-1];
+                if ( (llp.x == xl && lp.y == yt) || (lp.x == xl && llp.y == yt) )
+                {
+                    tmp.pop_back();
+                    tmp.push_back(Point(xl, yt));
+                    tmp.push_back(lp);
+                    llast = -1;
+                }
+                else if ( (llp.y == yt && lp.x == xr) || (lp.y == yt && llp.x == xr) )
+                {
+                    tmp.pop_back();
+                    tmp.push_back(Point(xr, yt));
+                    tmp.push_back(lp);
+                    llast = -1;
+                }
+                else if ( (llp.x == xr && lp.y == yb) || (lp.x == xr && llp.y == yb) )
+                {
+                    tmp.pop_back();
+                    tmp.push_back(Point(xr, yb));
+                    tmp.push_back(lp);
+                    llast = -1;
+                }
+                else if ( (llp.y == yb && lp.x == xl) || (lp.y == yb && llp.x == xl) )
+                {
+                    tmp.pop_back();
+                    tmp.push_back(Point(xl, yb));
+                    tmp.push_back(lp);
+                    llast = -1;
+                }
+            }
         }
     }
     vertices = tmp;

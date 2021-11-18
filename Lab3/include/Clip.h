@@ -78,7 +78,7 @@ struct Line
     } 
 
     // update parameter for each Crop boundaries
-    bool clip_T(float p, float q, float &u_in, float &u_out);
+    bool clip_T(double p, double q, double &u_in, double &u_out);
     // Liang-Barskey clipping algorithm
     Line Liang_Barskey();
 };
