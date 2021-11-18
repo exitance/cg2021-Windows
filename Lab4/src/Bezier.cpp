@@ -123,10 +123,7 @@ Point recursize_bezier(const std::vector<Point> &control_points, double t)
     while(split_points.size() > 1)
     {
         for (int i = 0; i < split_points.size()-1; i ++)
-        {
-            split_points[i].x = ((1-t) * split_points[i].x + t * split_points[i+1].x);
-            split_points[i].y = ((1-t) * split_points[i].y + t * split_points[i+1].y);
-        }
+            split_points[i] = (split_points[i] * (1-t) + split_points[i+1] * t);
         split_points.pop_back();
     }
     return split_points[0];

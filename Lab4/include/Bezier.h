@@ -28,6 +28,14 @@ struct Point
         x = b.x;
         y = b.y;
     }
+    Point operator*(double v)
+    {
+        return Point(v*x, v*y);
+    }
+    Point operator+(const Point &b)
+    {
+        return Point(x+b.x, y+b.y);
+    }
 };
 
 // RGB Color
