@@ -272,8 +272,6 @@ void PolygonClip::clipping(Color c)
 void PolygonClip::LB_clipping(Color c)
 {
     std::vector<Point> tmp;
-    // in = 0, out = 1
-    int llast = -1, last = -1;
     for (int i = 0; i < vertices.size(); i ++)
     {   // first clip each line of the polygon using Liang-Barskey algorithm
         int j = i==vertices.size()-1?0:i+1;
@@ -283,56 +281,40 @@ void PolygonClip::LB_clipping(Color c)
         if (clip_line.vertex[0].valid() && clip_line.vertex[1].valid())
         {   // if the line intersect with or inside the crop box
             // do not add same vertice repeately
-            if ( tmp.empty() || tmp[tmp.size()-1] != clip_line.vertex[0] )
+            int dup = 0;
+            for (int k = 0; k < tmp.size(); k ++)
             {
-                tmp.push_back(clip_line.vertex[0]);
-                llast = last;
-                last = 0;
+                if (tmp[k] == clip_line.vertex[0])
+                {
+                    dup = 1;
+                    break;
+                }
             }
-            if ( tmp.empty() || tmp[tmp.size()-1] != clip_line.vertex[1] )
-            { 
-                tmp.push_back(clip_line.vertex[1]);
-                llast = last;
-                last = 1;
-            }
-            // check for corner
-            if (llast == 1 && last == 0)
+            if (!dup) tmp.push_back(clip_line.vertex[0]);
+            dup = 0;
+            for (int k = 0; k < tmp.size(); k ++)
             {
-                int n = tmp.size();
-                Point llp = tmp[n-2], lp = tmp[n-1];
-                if ( (llp.x == xl && lp.y == yt) || (lp.x == xl && llp.y == yt) )
+                if (tmp[k] == clip_line.vertex[1])
                 {
-                    tmp.pop_back();
-                    tmp.push_back(Point(xl, yt));
-                    tmp.push_back(lp);
-                    llast = -1;
-                }
-                else if ( (llp.y == yt && lp.x == xr) || (lp.y == yt && llp.x == xr) )
-                {
-                    tmp.pop_back();
-                    tmp.push_back(Point(xr, yt));
-                    tmp.push_back(lp);
-                    llast = -1;
-                }
-                else if ( (llp.x == xr && lp.y == yb) || (lp.x == xr && llp.y == yb) )
-                {
-                    tmp.pop_back();
-                    tmp.push_back(Point(xr, yb));
-                    tmp.push_back(lp);
-                    llast = -1;
-                }
-                else if ( (llp.y == yb && lp.x == xl) || (lp.y == yb && llp.x == xl) )
-                {
-                    tmp.pop_back();
-                    tmp.push_back(Point(xl, yb));
-                    tmp.push_back(lp);
-                    llast = -1;
+                    dup = 1;
+                    break;
                 }
             }
+            if (!dup) tmp.push_back(clip_line.vertex[1]);
         }
     }
-    vertices = tmp;
+    // check for corner
+    Point a = tmp[0], b = tmp[tmp.size()-1];
+    if ( (a.x == xl && b.y == yt) || (b.x == xl && a.y == yt) )
+        tmp.push_back(Point(xl, yt));
+    else if ( (a.y == yt && b.x == xr) || (b.y == yt && a.x == xr) )
+        tmp.push_back(Point(xr, yt));
+    else if ( (a.x == xr && b.y == yb) || (b.x == xr && a.y == yb) )
+        tmp.push_back(Point(xr, yb));
+    else if ( (a.y == yb && b.x == xl) || (b.y == yb && a.x == xl) )
+        tmp.push_back(Point(xl, yb));
 
+    vertices = tmp;
     for (int i = 0; i < vertices.size(); i ++)
     {
         int j = i==vertices.size()-1?0:i+1;
