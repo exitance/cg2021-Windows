@@ -12,7 +12,7 @@
 
 #define SCR_WIDTH 800
 #define SCR_HEIGHT 600
-#define CONTROL_POINT_SIZE 5
+#define CONTROL_POINT_SIZE 20
 
 int sw = SCR_WIDTH;             // screen width
 int sh = SCR_HEIGHT;            // screen height
@@ -41,6 +41,14 @@ struct Point
         if (x != b.x || y != b.y) return true;
         return false;
     }
+    Point operator*(double v)
+    {
+        return Point(v*x, v*y);
+    }
+    Point operator+(const Point &b)
+    {
+        return Point(x+b.x, y+b.y);
+    }
 
     int cross_product(const Point &b)
     {
@@ -63,17 +71,7 @@ public:
     // default constructor
     Bspline(){ }
     // construct B-spline curve using given control points and degree
-    Bspline(std::vector<Point> cp, int deg)
-    {
-        control_points = cp;
-        degree = deg;
-        // Quasi-uniform
-        int n = control_points.size() - 1;
-        int cnt = n + 1 - degree;
-        for (int i = 0; i < degree + 1; i ++) knots.push_back(0);
-        for (int i = degree + 1; i <= n; i ++) knots.push_back(knots[i-1] + 1.0/cnt);
-        for (int i = n + 1; i < n + degree + 2; i ++) knots.push_back(1);
-    }
+    Bspline(std::vector<Point> cp, int deg); 
 
     // recursively compute the point on B-spline curve with parameter t
     Point recursive_deBoor(double t);

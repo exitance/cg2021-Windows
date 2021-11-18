@@ -42,7 +42,7 @@ int main()
     std::cout << "\tDrag existed control point to adjust B-spline curve" << std::endl;
     std::cout << "\tRight-click existed control point to delete the control point" << std::endl;
     std::cout << "\tPress D then enter a integer can change the degree of B-spline curve" << std::endl;
-    std::cout << "\t[NOTE]: The default degree of B-spline curve is 3" << std::endl; 
+    std::cout << "\t[NOTE]: The default degree of B-spline curve is 4" << std::endl; 
     std::cout << "-----------------------------------------------------------------------------" << std::endl;
 
     reset();
@@ -92,7 +92,7 @@ void reset()
     rmod = -1;
     control_points.clear();
     index = -1;
-    degree = 3;
+    degree = 4;
 }
 
 // draw a single pixel
@@ -158,27 +158,49 @@ void modify_control_point(int idx, int x, int y)
     control_points[idx].y = y;
 }
 
+// construct B-spline curve using given control points and degree
+// --------------------------------------------------------------
+Bspline::Bspline(std::vector<Point> cp, int deg)
+{
+    control_points = cp;
+    degree = deg;
+    // Quasi-uniform
+    int n = control_points.size() - 1;
+    int cnt = n + 1 - degree;
+    // 0 and 1 Repeat k times, where k = degree + 1 is the order of the B-spline
+    for (int i = 0; i < degree + 1; i ++) knots.push_back(0);
+    for (int i = degree + 1; i <= n; i ++) knots.push_back(knots[i-1] + 1.0/cnt);
+    for (int i = n + 1; i < n + degree + 2; i ++) knots.push_back(1);
+}
+
 // recursively compute the point on B-spline curve with parameter t
 // ----------------------------------------------------------------
 Point Bspline::recursive_deBoor(double t)
 {
+    // t in [t_k, t_{k+1}]
     int k = lower_bound(knots, t);
-    std::vector<Point> d;
-    for (int i = k - degree; i <= k + 1; i ++) d.push_back(control_points[i]);
+
+    // p(t) = \sum_{i=0}^{n} ( p_{i} * N_{i, r}(t) ) = \sum_{i=k-degree}^{k} ( p_{i} * N_{i, r}(t) )
+    //      = \sum_{i=k-degree}^{k} ( [\frac{t-t_{i}}{t_{i+degree}-t_{i}} * p_{i} + \frac{t_{i+defree}-t}{t_{i+degree}-t_{i}} * p_{i-1}] * N_{i, r-1}(t) )
+    // p^[r]_{i}(t) = \frac{t-t_{i}}{t_{i+degree+1-r}-t_{i}} * p^[r-1]_{i} + \frac{t_{i+degree+1-r}-t}{t_{i+degree+1-r}-t_{i}} * p^[r-1]_{i-1}
+    // p(t) = p^[degree]_{j}(t)
+    // r = 0: p(t)
+    std::vector<Point> p;
+    // shift - k + degree
+    for (int i = k - degree; i <= k + 1; i ++) p.push_back(control_points[i]);
 
     for (int r = 1; r <= degree; r ++)
     {
-        for (int j = degree; j >= r; j --)
+        // here i' = i - k + d in original equation
+        for (int i = degree; i >= r; i --)
         {
-            double alpha = (t - knots[j + k - degree]) / (knots[j + 1 + k - r] - knots[j + k - degree]);
-            Point tmp;
-            tmp.x = (1.0 - alpha) * d[j - 1].x + alpha * d[j].x;
-            tmp.y = (1.0 - alpha) * d[j - 1].y + alpha * d[j].y;
-            d[j] = tmp;
+            // here use origin i = i' + k - d
+            double alpha = (t - knots[i + k - degree]) / (knots[i + k + 1 - r] - knots[i + k - degree]);
+            p[i] = p[i] * alpha + p[i-1] * (1.0 -alpha);
         }
     }
 
-    return d[degree];
+    return p[degree];
 }
 
 // draw B-spline curve using deBoor algorithm
